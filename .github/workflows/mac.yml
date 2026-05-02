@@ -1,32 +1,30 @@
-name: Package macOS App (no build)
+name: Build Qt macOS (simple)
 
 on:
   workflow_dispatch:
+  push:
 
 jobs:
-  package:
+  build:
     runs-on: macos-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 👉 aqui você já PRECISA ter o binário no repo
-      - name: Create .app structure
+      - name: Install Qt
+        run: brew install qt
+
+      - name: Add Qt to PATH
+        run: echo "/opt/homebrew/opt/qt/bin" >> $GITHUB_PATH
+
+      - name: Check qmake
+        run: qmake -v
+
+      - name: Build (qmake)
         run: |
-          mkdir -p InputRedirection.app/Contents/MacOS
-          
-          # troca isso pelo seu binário pronto
-          cp ./binario_pronto InputRedirection.app/Contents/MacOS/
+          qmake
+          make
 
-      - name: Make executable
-        run: chmod +x InputRedirection.app/Contents/MacOS/*
-
-      - name: Zip app
-        run: zip -r InputRedirection-mac.zip InputRedirection.app
-
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: mac-app
-          path: InputRedirection-mac.zip
+      - name: Find output
+        run: find . -type f -perm +111
