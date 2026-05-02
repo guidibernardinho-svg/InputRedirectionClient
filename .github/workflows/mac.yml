@@ -1,0 +1,32 @@
+name: Package macOS App (no build)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 👉 aqui você já PRECISA ter o binário no repo
+      - name: Create .app structure
+        run: |
+          mkdir -p InputRedirection.app/Contents/MacOS
+          
+          # troca isso pelo seu binário pronto
+          cp ./binario_pronto InputRedirection.app/Contents/MacOS/
+
+      - name: Make executable
+        run: chmod +x InputRedirection.app/Contents/MacOS/*
+
+      - name: Zip app
+        run: zip -r InputRedirection-mac.zip InputRedirection.app
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-app
+          path: InputRedirection-mac.zip
