@@ -1,0 +1,56 @@
+name: Build macOS Qt App
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        run: |
+          brew update
+          brew install qt
+
+      - name: Set Qt path
+        run: echo "/opt/homebrew/opt/qt/bin" >> $GITHUB_PATH
+
+      - name: Verify Qt
+        run: |
+          qmake -v
+
+      # ===== BUILD (qmake version) =====
+      - name: Build project
+        run: |
+          qmake
+          make -j$(sysctl -n hw.ncpu)
+
+      # ===== CREATE APP BUNDLE =====
+      - name: Create .app bundle
+        run: |
+          mkdir -p InputRedirection.app/Contents/MacOS
+          
+          # pega o executável gerado (ajuste se necessário)
+          cp $(find . -type f -perm +111 | head -n 1) InputRedirection.app/Contents/MacOS/
+
+      # ===== DEPLOY QT DEPENDENCIES =====
+      - name: Deploy Qt app
+        run: |
+          macdeployqt InputRedirection.app -verbose=2
+
+      # ===== ZIP FOR RELEASE =====
+      - name: Zip .app
+        run: |
+          zip -r InputRedirection-macOS.zip InputRedirection.app
+
+      # ===== UPLOAD ARTIFACT =====
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-app
+          path: InputRedirection-macOS.zip
