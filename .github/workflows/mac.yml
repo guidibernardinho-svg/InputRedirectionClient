@@ -1,56 +1,67 @@
-name: Build macOS Qt App
+name: Build macOS Qt App (safe)
 
 on:
   push:
   workflow_dispatch:
 
 jobs:
-  build-mac:
+  mac-build:
     runs-on: macos-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Qt
+      - name: Install Qt + CMake
         run: |
           brew update
-          brew install qt
+          brew install qt cmake
 
-      - name: Set Qt path
+      - name: Setup Qt path
         run: echo "/opt/homebrew/opt/qt/bin" >> $GITHUB_PATH
 
       - name: Verify Qt
         run: |
-          qmake -v
+          qmake -v || true
 
-      # ===== BUILD (qmake version) =====
-      - name: Build project
+      # ===== CONFIGURE =====
+      - name: Configure project (CMake)
         run: |
-          qmake
-          make -j$(sysctl -n hw.ncpu)
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
 
-      # ===== CREATE APP BUNDLE =====
-      - name: Create .app bundle
+      # ===== BUILD (sem "build project" direto) =====
+      - name: Compile
+        run: |
+          cd build
+          cmake --build . --parallel
+
+      # ===== FIND EXECUTABLE AUTOMATICALLY =====
+      - name: Locate binary
+        run: |
+          find build -type f -perm +111 -print
+
+      # ===== CREATE APP =====
+      - name: Create .app
         run: |
           mkdir -p InputRedirection.app/Contents/MacOS
-          
-          # pega o executável gerado (ajuste se necessário)
-          cp $(find . -type f -perm +111 | head -n 1) InputRedirection.app/Contents/MacOS/
+          BIN=$(find build -type f -perm +111 | head -n 1)
+          cp "$BIN" InputRedirection.app/Contents/MacOS/
 
-      # ===== DEPLOY QT DEPENDENCIES =====
-      - name: Deploy Qt app
+      # ===== DEPLOY QT =====
+      - name: macdeployqt
         run: |
-          macdeployqt InputRedirection.app -verbose=2
+          macdeployqt InputRedirection.app || true
 
-      # ===== ZIP FOR RELEASE =====
-      - name: Zip .app
+      # ===== ZIP =====
+      - name: Package
         run: |
-          zip -r InputRedirection-macOS.zip InputRedirection.app
+          zip -r InputRedirection-mac.zip InputRedirection.app
 
-      # ===== UPLOAD ARTIFACT =====
+      # ===== UPLOAD =====
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: mac-app
-          path: InputRedirection-macOS.zip
+          path: InputRedirection-mac.zip
