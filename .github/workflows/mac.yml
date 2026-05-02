@@ -1,8 +1,7 @@
-name: Build Qt macOS (simple)
+name: Qt macOS build FIX
 
 on:
   workflow_dispatch:
-  push:
 
 jobs:
   build:
@@ -15,16 +14,22 @@ jobs:
       - name: Install Qt
         run: brew install qt
 
-      - name: Add Qt to PATH
-        run: echo "/opt/homebrew/opt/qt/bin" >> $GITHUB_PATH
-
-      - name: Check qmake
-        run: qmake -v
-
-      - name: Build (qmake)
+      - name: Set Qt PATH (importantíssimo)
         run: |
-          qmake
-          make
+          echo "/opt/homebrew/opt/qt/bin" >> $GITHUB_PATH
 
-      - name: Find output
-        run: find . -type f -perm +111
+      - name: Check Qt
+        run: |
+          which qmake
+          qmake -v
+
+      - name: Clean old builds
+        run: rm -rf build
+
+      - name: Run qmake correctly
+        run: |
+          qmake InputRedirectionClient.pro -spec macx-clang CONFIG+=release
+
+      - name: Build
+        run: |
+          make -j$(sysctl -n hw.ncpu)
